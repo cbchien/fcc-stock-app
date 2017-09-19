@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html>
+
+		
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20150503/json2.min.js"></script>
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+	<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+	<script src="https://jspm.io/system@0.16.js"></script>
+	<script src="https://cdn.jsdelivr.net/momentjs/2.13.0/moment.min.js"></script>
+
+	<script>	
+		var socket = io.connect(); 
+        function getRequest() {
+            console.log("message submitted");
+            console.log( document.getElementById("m").value);
+            socket.emit('chat message',document.getElementById("m").value);
+            return false;   
+        }
+        
+        function removeStock(stock){
+            socket.emit('remove stock', stock);
+            return false;
+        }
+        
+        socket.on('chat message', function(msg){
+           console.log("prepare to add stock")
+           var node = document.createElement("li");  
+           node.setAttribute("id", msg);
+           var textnode = document.createTextNode(msg);
+           var btn = document.createElement("button");
+           btn.setAttribute("onclick",'removeStock(' +"'"+msg+ "'"+ ');');
+           var btnContent =document.createTextNode("Remove");
+           btn.appendChild(btnContent)
+           node.appendChild(textnode);                              
+           // Append the text to <li>
+           document.getElementById("stocklist").appendChild(node);
+           document.getElementById(msg).appendChild(btn);
+           prepareForChart();
+         });
+         
+         socket.on('remove stock', function(stock){
+            console.log("prepare to remove stock");
+            var element = document.getElementById(stock);
+            element.outerHTML = "";
+            prepareForChart();
+         });
+         
+        function prepareForChart() {
+            var seriesOptions = [],
+                seriesCounter = 0;
+            var names = [];
+            var nodes = document.getElementById('stocklist').getElementsByTagName("li");
+                for(var i=0; i<nodes.length; i++) {
+                        console.log (nodes[i].id);
+                        names[names.length] = nodes[i].id;
+            }
+            console.log(names);
+
+            $.each(names, function (i, name) {
+                jQuery.getJSON( 'https://www.quandl.com/api/v3/datasets/WIKI/' + name.toLowerCase() + '.json?api_key=Z9RSJmacSAgFgV3ns7Na',
+                    function (data) {
+
+                    processData(data, function(processed){
+                        seriesOptions[i] = {
+                            name: name,
+                            data: processed
+                        };
+                    
+                        seriesCounter += 1;
+                        if (seriesCounter === names.length) {
+                            createChart(seriesOptions);
+                        }            
+                    })
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) { 
+                   //if jquery request fails, remove item, pop up error on this users screen
+                    console.log(name + " failed. Will remove this.")
+                    document.getElementById("error").innerHTML = "A user entered, <b>"+ name + "</b>. This is not a recognized stock symbol. Enter a new symbol to try again."
+                })
+            });
+        };
+
+        function processData(data, spitOutChart ){
+            //processes data into an array of dates, values
+            var processed = [];
+            var startdate =data.dataset.data[data.dataset.data.length-1][0];
+           	for (var i=0; i<data.dataset.data.length; i++){
+    			processed[i] = [];
+    			processed[i][0] = Math.floor(moment(startdate).add(i, 'days').format('x'));
+    			processed[i][1] = data.dataset.data[i][4];
+    		}
+            spitOutChart(processed);
+            console.log(processed);
+        };
+                
+        function createChart(seriesOptions){
+            // http://api.highcharts.com/highcharts/plotOptions
+            $('#container').highcharts('StockChart', {
+                rangeSelector: {
+                    selected: 4
+                },
+
+                yAxis: {
+                    labels: {
+                        formatter: function () {
+                            return (this.value > 0 ? ' + ' : '') + this.value + '%';
+                        }
+                    },
+                    plotLines: [{
+                        value: 0,
+                        width: 2,
+                        color: 'silver'
+                    }]
+                },
+
+                plotOptions: {
+                    series: {
+                        compare: 'percent'
+                    }
+                },
+
+                tooltip: {
+                    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b> ({point.change}%)<br/>',
+                    valueDecimals: 2
+                },
+
+                series: seriesOptions
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            prepareForChart();
+        }, false);
+	</script>
+
+	<head>
+		<title>FreeCodeCamp Stock Tracker</title>
+		<link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+	</head>
+
+	<header>
+
+	</header>
+
+	<body>
+	    <center><h2>Stock Tracker</h2></center>
+  
+        <center>
+
+        <form action="">
+            <input id="m" autocomplete="off" /><button onclick="getRequest();">Add Stock</button>
+        </form>
+        </center>
+        <br/>
+
+        <div class="well">
+	          <div id="container" style="height: 400px; min-width: 310px"></div>
+	    </div>
+	
+        <div class="well">
+              <h4>Current Stocks:</h4>
+              <p>{{{stocks}}}</p>
+              <div id = "error"></div>
+              <div id="stocks"></div>
+	    </div>
+	</body>
+</html>
