@@ -1,7 +1,7 @@
 {
-  "name": "clementinejs-fcc",
-  "version": "1.0.1",
-  "description": "The elegant and lightweight boilerplate for full stack JavaScript.",
+  "name": "fcc-stock-app-cbc",
+  "version": "1.0.0",
+  "description": "FCC backend project exercise",
   "main": "server.js",
   "repository": {
     "type": "git",
