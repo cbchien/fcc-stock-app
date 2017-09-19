@@ -7,7 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/cbchien/fcc-stock-app"
   },
-  "homepage": "c",
+  "homepage": "https://cbc-stock.herokuapp.com/",
   "keywords": [
     "MongoDB",
     "Mongoose",
